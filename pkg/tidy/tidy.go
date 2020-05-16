@@ -72,7 +72,7 @@ func (w *Worker) defaultPattern() {
 			return nil
 		}
 
-		dstDir := fmt.Sprintf("%s/%s/%s", w.o.TargetPath, meta.Artist(), meta.Album())
+		dstDir := fmt.Sprintf("%s/%s/%s", w.o.TargetPath, Escape(meta.Artist()), Escape(meta.Album()))
 		f.Seek(0, 0)
 		os.MkdirAll(dstDir, 0777)
 		dstFilePath := fmt.Sprintf("%s/%s%s", dstDir, meta.Title(), ext)
