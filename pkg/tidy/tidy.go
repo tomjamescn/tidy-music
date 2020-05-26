@@ -132,6 +132,8 @@ func (w *Worker) defaultPattern() {
 			os.Remove(oldPath)
 		}
 
+		w.PrintMsgFunc(fmt.Sprintf("%s/%s/%s%s", Escape(meta.Artist()), Escape(meta.Album()), Escape(meta.Title()), ext))
+
 		return nil
 	})
 
