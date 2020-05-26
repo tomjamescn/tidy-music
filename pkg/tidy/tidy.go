@@ -116,7 +116,7 @@ func (w *Worker) defaultPattern() {
 			}
 		}
 
-		dstFile, err := os.OpenFile(dstFilePath, os.O_RDWR|os.O_CREATE, 0755)
+		dstFile, err := os.OpenFile(dstFilePath, os.O_RDWR|os.O_CREATE, 0644)
 		if err != nil {
 			w.PrintMsgFunc(fmt.Sprintf("failed to open and create file. path:%s meta.Artist:%s meta.Album:%s err:%v\n", dstFilePath, meta.Artist(), meta.Album(), err))
 			return nil
