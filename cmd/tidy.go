@@ -35,9 +35,11 @@ var tidyCmd = &cobra.Command{
 	Long:  `tidy music`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var (
-			src, _    = cmd.Flags().GetString("source-path")
-			target, _ = cmd.Flags().GetString("target-path")
-			dryRun, _ = cmd.Flags().GetBool("dry-run")
+			src, _                  = cmd.Flags().GetString("source-path")
+			target, _               = cmd.Flags().GetString("target-path")
+			dryRun, _               = cmd.Flags().GetBool("dry-run")
+			deleteSrc, _            = cmd.Flags().GetBool("delete-src")
+			duplicateAutoReplace, _ = cmd.Flags().GetBool("duplicate-auto-replace")
 		)
 
 		if src == "" || target == "" {
@@ -49,6 +51,8 @@ var tidyCmd = &cobra.Command{
 			tidy.SourcePath(src),
 			tidy.TargetPath(target),
 			tidy.DryRun(dryRun),
+			tidy.DeleteSrc(deleteSrc),
+			tidy.DuplicationAutoReplace(duplicateAutoReplace),
 		)
 
 		worker.Tidy()
@@ -70,4 +74,6 @@ func init() {
 	tidyCmd.Flags().StringP("source-path", "s", "", "source path")
 	tidyCmd.Flags().StringP("target-path", "t", "", "target path")
 	tidyCmd.Flags().BoolP("dry-run", "d", false, "dry run")
+	tidyCmd.Flags().BoolP("delete-source", "l", false, "delete source path after tidy")
+	tidyCmd.Flags().BoolP("duplicate-auto-replace", "r", false, "duplicate auto replace target")
 }

@@ -41,8 +41,6 @@ func (w *Worker) defaultPattern() {
 		os.Exit(0)
 	}
 
-	fmt.Println("test")
-
 	err := filepath.Walk(w.o.SourcePath, func(oldPath string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.Printf("failed to access file. path:%s err:%v\n", oldPath, err)
@@ -73,15 +71,21 @@ func (w *Worker) defaultPattern() {
 		}
 
 		dstDir := fmt.Sprintf("%s/%s/%s", w.o.TargetPath, Escape(meta.Artist()), Escape(meta.Album()))
+		err = os.MkdirAll(dstDir, 0777)
+		if err != nil {
+			panic(err)
+		}
+		dstFilePath := fmt.Sprintf("%s/%s%s", dstDir, Escape(meta.Title()), ext)
+		if w.o.DryRun {
+			fmt.Printf("DRYRUN: %s => %s\n", oldPath, dstFilePath)
+			return nil
+		}
 		f.Seek(0, 0)
-		os.MkdirAll(dstDir, 0777)
-		dstFilePath := fmt.Sprintf("%s/%s%s", dstDir, meta.Title(), ext)
-		fmt.Println(dstFilePath)
 		if _, err := os.Stat(dstFilePath); !os.IsNotExist(err) {
 			// old same name file exist!
 			of, err := os.Open(dstFilePath)
 			if err != nil {
-				log.Printf("failed to open file. path:%s err:%v\n", dstFilePath, err)
+				log.Printf("failed to open file. path:%s meta.Artist:%s meta.Album:%s err:%v\n", dstFilePath, meta.Artist(), meta.Album(), err)
 				return err
 			}
 			defer of.Close()
@@ -93,6 +97,7 @@ func (w *Worker) defaultPattern() {
 			}
 			diff, equal := messagediff.PrettyDiff(oldMeta, meta)
 			if equal {
+				log.Printf("same file and same meta info exist! ignore: %s => %s", oldPath, dstFilePath)
 				return nil
 			}
 			fmt.Printf("[ATTENTION]same path\n src: %s\ndest: %s\nold info:%s\ndiff:\n%s\n\nPlease check replace[y/n]:", oldPath, dstFilePath, spew.Sdump(oldMeta), diff)
@@ -111,7 +116,7 @@ func (w *Worker) defaultPattern() {
 
 		dstFile, err := os.OpenFile(dstFilePath, os.O_RDWR|os.O_CREATE, 0755)
 		if err != nil {
-			fmt.Printf("failed to open and create file. path:%s err:%v\n", dstFilePath, err)
+			log.Printf("failed to open and create file. path:%s meta.Artist:%s meta.Album:%s err:%v\n", dstFilePath, meta.Artist(), meta.Album(), err)
 			return nil
 		}
 		defer dstFile.Close()

@@ -1,7 +1,9 @@
 package tidy
 
-import "strings"
+import (
+	"strings"
+)
 
 func Escape(str string) string {
-	return strings.Replace(str, "/", `╱`, -1)
+	return strings.Replace(str, "/", "∕", -1)
 }
