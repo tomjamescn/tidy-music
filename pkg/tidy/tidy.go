@@ -15,7 +15,8 @@ import (
 )
 
 type Worker struct {
-	o Options
+	o            Options
+	PrintMsgFunc func(msg string)
 }
 
 func NewWorker(opts ...Option) *Worker {
@@ -23,6 +24,7 @@ func NewWorker(opts ...Option) *Worker {
 	options := newOptions(opts...)
 
 	worker.o = options
+	worker.PrintMsgFunc = func(msg string) { log.Println(msg) }
 
 	return worker
 }
@@ -43,7 +45,7 @@ func (w *Worker) defaultPattern() {
 
 	err := filepath.Walk(w.o.SourcePath, func(oldPath string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Printf("failed to access file. path:%s err:%v\n", oldPath, err)
+			w.PrintMsgFunc(fmt.Sprintf("failed to access file. path:%s err:%v\n", oldPath, err))
 			return err
 		}
 
@@ -53,20 +55,20 @@ func (w *Worker) defaultPattern() {
 
 		ext := strings.ToLower(path.Ext(oldPath))
 		if ext != ".mp3" && ext != ".flac" {
-			log.Printf("Not Supported ext: %s path: %s", ext, oldPath)
+			w.PrintMsgFunc(fmt.Sprintf("Not Supported ext: %s path: %s", ext, oldPath))
 			return nil
 		}
 
 		f, err := os.Open(oldPath)
 		if err != nil {
-			log.Printf("failed to open file. path:%s err:%v\n", oldPath, err)
+			w.PrintMsgFunc(fmt.Sprintf("failed to open file. path:%s err:%v\n", oldPath, err))
 			return err
 		}
 		defer f.Close()
 
 		meta, err := tag.ReadFrom(f)
 		if err != nil {
-			log.Printf("failed to read tag from file. path:%s err:%v\n", oldPath, err)
+			w.PrintMsgFunc(fmt.Sprintf("failed to read tag from file. path:%s err:%v\n", oldPath, err))
 			return nil
 		}
 
@@ -77,7 +79,7 @@ func (w *Worker) defaultPattern() {
 		}
 		dstFilePath := fmt.Sprintf("%s/%s%s", dstDir, Escape(meta.Title()), ext)
 		if w.o.DryRun {
-			fmt.Printf("DRYRUN: %s => %s\n", oldPath, dstFilePath)
+			w.PrintMsgFunc(fmt.Sprintf("DRYRUN: %s => %s\n", oldPath, dstFilePath))
 			return nil
 		}
 		f.Seek(0, 0)
@@ -85,30 +87,30 @@ func (w *Worker) defaultPattern() {
 			// old same name file exist!
 			of, err := os.Open(dstFilePath)
 			if err != nil {
-				log.Printf("failed to open file. path:%s meta.Artist:%s meta.Album:%s err:%v\n", dstFilePath, meta.Artist(), meta.Album(), err)
+				w.PrintMsgFunc(fmt.Sprintf("failed to open file. path:%s meta.Artist:%s meta.Album:%s err:%v\n", dstFilePath, meta.Artist(), meta.Album(), err))
 				return err
 			}
 			defer of.Close()
 
-			oldMeta, err := tag.ReadFrom(of)
-			if err != nil {
-				log.Printf("failed to read tag from file. path:%s err:%v\n", dstFilePath, err)
-				return nil
-			}
-			diff, equal := messagediff.PrettyDiff(oldMeta, meta)
-			if equal {
-				log.Printf("same file and same meta info exist! ignore: %s => %s", oldPath, dstFilePath)
-				return nil
-			}
-			fmt.Printf("[ATTENTION]same path\n src: %s\ndest: %s\nold info:%s\ndiff:\n%s\n\nPlease check replace[y/n]:", oldPath, dstFilePath, spew.Sdump(oldMeta), diff)
 			if w.o.DuplicationAutoReplace {
-				log.Printf("auto replace old file")
+				w.PrintMsgFunc(fmt.Sprintf("auto replace old file %s", dstFilePath))
 			} else {
+				oldMeta, err := tag.ReadFrom(of)
+				if err != nil {
+					w.PrintMsgFunc(fmt.Sprintf("failed to read tag from file. path:%s err:%v\n", dstFilePath, err))
+					return nil
+				}
+				diff, equal := messagediff.PrettyDiff(oldMeta, meta)
+				if equal {
+					w.PrintMsgFunc(fmt.Sprintf("same file and same meta info exist! ignore: %s => %s", oldPath, dstFilePath))
+					return nil
+				}
+				w.PrintMsgFunc(fmt.Sprintf("[ATTENTION]same path\n src: %s\ndest: %s\nold info:%s\ndiff:\n%s\n\nPlease check replace[y/n]:", oldPath, dstFilePath, spew.Sdump(oldMeta), diff))
 				var replace string
 				n, _ := fmt.Scanln(&replace)
 				replace = strings.ToLower(replace)
 				if n != 1 || replace == "n" {
-					log.Printf("Not replace")
+					w.PrintMsgFunc(fmt.Sprintf("Not replace"))
 					return nil
 				}
 			}
@@ -116,13 +118,13 @@ func (w *Worker) defaultPattern() {
 
 		dstFile, err := os.OpenFile(dstFilePath, os.O_RDWR|os.O_CREATE, 0755)
 		if err != nil {
-			log.Printf("failed to open and create file. path:%s meta.Artist:%s meta.Album:%s err:%v\n", dstFilePath, meta.Artist(), meta.Album(), err)
+			w.PrintMsgFunc(fmt.Sprintf("failed to open and create file. path:%s meta.Artist:%s meta.Album:%s err:%v\n", dstFilePath, meta.Artist(), meta.Album(), err))
 			return nil
 		}
 		defer dstFile.Close()
 
 		if _, err := io.Copy(dstFile, f); err != nil {
-			log.Printf("failed to copy. err:%v\n", err)
+			w.PrintMsgFunc(fmt.Sprintf("failed to copy. err:%v\n", err))
 			return err
 		}
 
@@ -134,6 +136,6 @@ func (w *Worker) defaultPattern() {
 	})
 
 	if err != nil {
-		fmt.Printf("walk failed! err:%v\n", err)
+		w.PrintMsgFunc(fmt.Sprintf("walk failed! err:%v\n", err))
 	}
 }
